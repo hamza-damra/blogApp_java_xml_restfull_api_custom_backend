@@ -35,6 +35,7 @@ dependencies {
 
     implementation(libs.appcompat)
     implementation(libs.material)
+    implementation(libs.okhttp)
     implementation(libs.activity)
     implementation(libs.constraintlayout)
     testImplementation(libs.junit)
