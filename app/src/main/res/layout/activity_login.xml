@@ -105,15 +105,15 @@
                     </com.google.android.material.textfield.TextInputLayout>
 
                     <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btn_login"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:id="@+id/btn_login"
-                        android:minHeight="48dp"
-                        android:padding="12dp"
                         android:layout_marginStart="8dp"
                         android:layout_marginTop="13dp"
                         android:layout_marginEnd="8dp"
                         android:backgroundTint="@color/purple"
+                        android:minHeight="48dp"
+                        android:padding="16dp"
                         android:text="@string/login"
                         app:cornerRadius="10dp" />
 

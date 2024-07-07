@@ -7,4 +7,6 @@
     <string name="hello_blank_fragment">hello</string>
     <string name="register">Register</string>
     <string name="name">Name</string>
+    <string name="todo">TODO</string>
+    <string name="cancel_and_go_back">Cancel and go back</string>
 </resources>

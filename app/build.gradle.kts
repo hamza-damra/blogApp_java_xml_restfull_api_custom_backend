@@ -32,10 +32,12 @@ android {
 }
 
 dependencies {
-
     implementation(libs.appcompat)
     implementation(libs.material)
     implementation(libs.okhttp)
+    implementation(libs.lombok)
+    annotationProcessor(libs.lombok)
+    implementation(libs.gson)
     implementation(libs.activity)
     implementation(libs.constraintlayout)
     testImplementation(libs.junit)

@@ -6,7 +6,7 @@ import android.view.ViewTreeObserver;
 
 public class KeyboardVisibilityUtil {
 
-    public interface KeyboardVisibilityListener {
+    public static interface KeyboardVisibilityListener {
         void onKeyboardVisibilityChanged(boolean isVisible);
     }
 

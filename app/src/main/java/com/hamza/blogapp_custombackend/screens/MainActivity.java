@@ -1,4 +1,4 @@
-package com.hamza.blogapp_custombackend;
+package com.hamza.blogapp_custombackend.screens;
 
 import android.content.Intent;
 import android.os.Bundle;
@@ -9,8 +9,7 @@ import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
-import com.hamza.blogapp_custombackend.screens.LoginActivity;
-import com.hamza.blogapp_custombackend.screens.RegistrationActivity;
+import com.hamza.blogapp_custombackend.R;
 import com.hamza.blogapp_custombackend.validations.TokenManager;
 
 public class MainActivity extends AppCompatActivity {
@@ -26,11 +25,8 @@ public class MainActivity extends AppCompatActivity {
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
             return insets;
         });
-        if(tokenManager.getToken() == null) {
+        if(tokenManager.getToken().isEmpty()) {
             Intent intent = new Intent(this, LoginActivity.class);
-            startActivity(intent);
-        }else {
-            Intent intent = new Intent(this, RegistrationActivity.class);
             startActivity(intent);
         }
 

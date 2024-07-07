@@ -17,7 +17,6 @@ import androidx.core.view.WindowInsetsCompat;
 
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.textfield.TextInputEditText;
-import com.hamza.blogapp_custombackend.MainActivity;
 import com.hamza.blogapp_custombackend.R;
 import com.hamza.blogapp_custombackend.utils.KeyboardVisibilityUtil;
 import com.hamza.blogapp_custombackend.validations.TokenManager;
@@ -73,10 +72,14 @@ public class LoginActivity extends AppCompatActivity {
             }
         });
 
-        // Adjust the card position when the keyboard is visible
         View rootLayout = findViewById(R.id.main);
         cardView = findViewById(R.id.card_view);
-        KeyboardVisibilityUtil.setKeyboardVisibilityListener(rootLayout, isVisible -> adjustCardPosition(isVisible));
+        KeyboardVisibilityUtil.setKeyboardVisibilityListener((rootLayout), new KeyboardVisibilityUtil.KeyboardVisibilityListener() {
+            @Override
+            public void onKeyboardVisibilityChanged(boolean isVisible) {
+                adjustCardPosition(isVisible);
+            }
+        });
     }
 
     private void initViews() {
@@ -125,10 +128,8 @@ public class LoginActivity extends AppCompatActivity {
     private void adjustCardPosition(boolean isVisible) {
         if (cardView != null) {
             if (isVisible) {
-                // Move the card up by translating it up
                 cardView.animate().translationY(-200).setDuration(300).start(); // Adjust the value as needed
             } else {
-                // Move the card back to its original position
                 cardView.animate().translationY(0).setDuration(300).start();
             }
         }

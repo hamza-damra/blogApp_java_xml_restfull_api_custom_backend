@@ -142,6 +142,7 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:layout_gravity="center"
+                            android:contentDescription="@string/todo"
                             android:padding="8dp"
                             android:src="@drawable/ic_password" />
 
@@ -169,6 +170,7 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:layout_gravity="center"
+                            android:contentDescription="@string/todo"
                             android:padding="8dp"
                             android:src="@drawable/ic_password" />
 
@@ -192,8 +194,8 @@
                         android:layout_marginEnd="8dp"
                         android:backgroundTint="@color/purple"
                         android:minHeight="48dp"
-                        android:padding="12dp"
-                        android:text="Register"
+                        android:padding="16dp"
+                        android:text="@string/register"
                         app:cornerRadius="10dp" />
 
                     <com.google.android.material.button.MaterialButton
@@ -205,8 +207,8 @@
                         android:layout_marginEnd="8dp"
                         android:backgroundTint="@color/purple"
                         android:minHeight="48dp"
-                        android:padding="12dp"
-                        android:text="Cancel and go back"
+                        android:padding="16dp"
+                        android:text="@string/cancel_and_go_back"
                         app:cornerRadius="10dp" />
                 </LinearLayout>
             </androidx.cardview.widget.CardView>
