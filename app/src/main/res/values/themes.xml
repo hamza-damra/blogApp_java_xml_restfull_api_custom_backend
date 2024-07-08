@@ -1,9 +1,12 @@
-<resources xmlns:tools="http://schemas.android.com/tools">
+<resources>
     <!-- Base application theme. -->
     <style name="Base.Theme.BlogApp_CustomBackend" parent="Theme.Material3.DayNight.NoActionBar">
         <!-- Customize your light theme here. -->
-        <!-- <item name="colorPrimary">@color/my_light_primary</item> -->
     </style>
 
     <style name="Theme.BlogApp_CustomBackend" parent="Base.Theme.BlogApp_CustomBackend" />
+
+    <style name="Theme.BlogApp_CustomBackend.AppBarOverlay" parent="ThemeOverlay.Material3.Dark.ActionBar" />
+
+    <style name="Theme.BlogApp_CustomBackend.PopupOverlay" parent="ThemeOverlay.Material3.Light" />
 </resources>

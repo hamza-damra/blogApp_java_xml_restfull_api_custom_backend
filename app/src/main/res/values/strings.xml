@@ -9,4 +9,7 @@
     <string name="name">Name</string>
     <string name="todo">TODO</string>
     <string name="cancel_and_go_back">Cancel and go back</string>
+    <string name="test_description">Test Description</string>
+    <string name="textview">TextView</string>
+    <string name="test_title">Test Title</string>
 </resources>
