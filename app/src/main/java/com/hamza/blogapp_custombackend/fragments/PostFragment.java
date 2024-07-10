@@ -1,11 +1,16 @@
 package com.hamza.blogapp_custombackend.fragments;
 
+import static com.hamza.blogapp_custombackend.utils.AppConstant.ACCESS_TOKEN;
+
 import android.annotation.SuppressLint;
 import android.app.AlertDialog;
 import android.content.Context;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.LayoutInflater;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
@@ -13,6 +18,7 @@ import android.widget.EditText;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -32,6 +38,7 @@ import java.io.IOException;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 import okhttp3.Call;
 import okhttp3.Callback;
@@ -41,7 +48,7 @@ import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
 
-public class PostFragment extends Fragment {
+public class PostFragment extends Fragment implements PostAdapter.OnPostActionListener {
 
     private RecyclerView recyclerView;
     private PostAdapter postAdapter;
@@ -71,18 +78,25 @@ public class PostFragment extends Fragment {
         recyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
         posts = new ArrayList<>();
         getPosts();
-        postAdapter = new PostAdapter(posts, getContext());
+        postAdapter = new PostAdapter(posts, requireContext(), this);
         recyclerView.setAdapter(postAdapter);
         FloatingActionButton fab = view.findViewById(R.id.floatingActionButton);
         fab.setOnClickListener(v -> showAddPostDialog());
         return view;
     }
 
+    @Override
+    public void onCreate(@Nullable Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        requireActivity().getWindow().setStatusBarColor(getResources().getColor(R.color.purple_500));
+        setHasOptionsMenu(true);
+    }
+
     private void getPosts() {
         Request request = new Request.Builder()
                 .url(AppConstant.BASE_URL + "/api/posts/all")
                 .get()
-                .addHeader("Authorization", "Bearer " + "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJ0ZXN0dGVzMXQiLCJpYXQiOjE3MjA0NDcxMDYsImV4cCI6MTcyMDUzMzUwNn0.HkhZcBZtnNSLbhnpsT8dGW43ASI26sFLk4_BbRy3oGWEhe5TgMlyRG1M-sL2b26vgygZ8k1xjvHzQ50TnKn2wg")
+                .addHeader("Authorization", "Bearer " + ACCESS_TOKEN)
                 .build();
 
         client.newCall(request).enqueue(new Callback() {
@@ -100,7 +114,8 @@ public class PostFragment extends Fragment {
 
                     // Parse the JSON response
                     JsonObject jsonObject = JsonParser.parseString(jsonResponse).getAsJsonObject();
-                    Type listType = new TypeToken<ArrayList<Post>>() {}.getType();
+                    Type listType = new TypeToken<ArrayList<Post>>() {
+                    }.getType();
                     List<Post> postList = new Gson().fromJson(jsonObject.getAsJsonArray("content"), listType);
 
                     requireActivity().runOnUiThread(() -> {
@@ -121,7 +136,7 @@ public class PostFragment extends Fragment {
         builder.setView(dialogView);
 
         AlertDialog dialog = builder.create();
-        dialog.getWindow().setBackgroundDrawableResource(R.drawable.dialog_background);
+        Objects.requireNonNull(dialog.getWindow()).setBackgroundDrawableResource(R.drawable.dialog_background);
 
         EditText etTitle = dialogView.findViewById(R.id.et_title);
         EditText etDescription = dialogView.findViewById(R.id.et_description);
@@ -146,7 +161,6 @@ public class PostFragment extends Fragment {
         dialog.show();
     }
 
-
     private void addNewPost(String title, String description, String content) {
         Post newPost = new Post(title, description, content, new ArrayList<>());
         String postJson = new Gson().toJson(newPost);
@@ -155,7 +169,7 @@ public class PostFragment extends Fragment {
         Request request = new Request.Builder()
                 .url(AppConstant.BASE_URL + "/api/posts/create")
                 .post(body)
-                .addHeader("Authorization", "Bearer " + "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJ0ZXN0dGVzMXQiLCJpYXQiOjE3MjA0NDcxMDYsImV4cCI6MTcyMDUzMzUwNn0.HkhZcBZtnNSLbhnpsT8dGW43ASI26sFLk4_BbRy3oGWEhe5TgMlyRG1M-sL2b26vgygZ8k1xjvHzQ50TnKn2wg")
+                .addHeader("Authorization", "Bearer " + ACCESS_TOKEN)
                 .build();
 
         client.newCall(request).enqueue(new Callback() {
@@ -182,4 +196,189 @@ public class PostFragment extends Fragment {
             }
         });
     }
+
+    @Override
+    public void onPostEdit(Post post) {
+        showEditPostDialog(post);
+    }
+
+    @Override
+    public void onPostDelete(Post post) {
+        deletePost(post);
+    }
+
+    private void showEditPostDialog(Post post) {
+        AlertDialog.Builder builder = new AlertDialog.Builder(requireContext());
+        LayoutInflater inflater = getLayoutInflater();
+        View dialogView = inflater.inflate(R.layout.dialog_add_post, null);
+        builder.setView(dialogView);
+
+        AlertDialog dialog = builder.create();
+        Objects.requireNonNull(dialog.getWindow()).setBackgroundDrawableResource(R.drawable.dialog_background);
+
+        EditText etTitle = dialogView.findViewById(R.id.et_title);
+        EditText etDescription = dialogView.findViewById(R.id.et_description);
+        EditText etContent = dialogView.findViewById(R.id.et_content);
+        Button btnCancel = dialogView.findViewById(R.id.btn_cancel);
+        Button btnAdd = dialogView.findViewById(R.id.btn_add);
+
+        etTitle.setText(post.getTitle());
+        etDescription.setText(post.getDescription());
+        etContent.setText(post.getContent());
+
+        btnCancel.setOnClickListener(v -> dialog.dismiss());
+        btnAdd.setOnClickListener(v -> {
+            String title = etTitle.getText().toString().trim();
+            String description = etDescription.getText().toString().trim();
+            String content = etContent.getText().toString().trim();
+
+            if (!title.isEmpty() && !description.isEmpty() && !content.isEmpty()) {
+                editPost(post, title, description, content);
+                dialog.dismiss();
+            } else {
+                Toast.makeText(requireContext(), "All fields are required", Toast.LENGTH_SHORT).show();
+            }
+        });
+
+        dialog.show();
+    }
+
+    private void editPost(Post post, String title, String description, String content) {
+        post.setTitle(title);
+        post.setDescription(description);
+        post.setContent(content);
+        String postJson = new Gson().toJson(post);
+
+        RequestBody body = RequestBody.create(postJson, MediaType.get("application/json; charset=utf-8"));
+        Request request = new Request.Builder()
+                .url(AppConstant.BASE_URL + "/api/posts/" + post.getId())
+                .put(body)
+                .addHeader("Authorization", "Bearer " + ACCESS_TOKEN)
+                .build();
+
+        client.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(@NonNull Call call, @NonNull IOException e) {
+                Log.e("Error", "Failed to edit post: " + e.getMessage());
+                requireActivity().runOnUiThread(() -> Toast.makeText(requireContext(), "Failed to edit post", Toast.LENGTH_SHORT).show());
+            }
+
+            @SuppressLint("NotifyDataSetChanged")
+            @Override
+            public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
+                if (response.isSuccessful() && response.body() != null) {
+                    requireActivity().runOnUiThread(() -> {
+                        postAdapter.notifyItemChanged(posts.indexOf(post));
+                        Toast.makeText(requireContext(), "Post edited successfully", Toast.LENGTH_SHORT).show();
+                    });
+                }
+            }
+        });
+    }
+
+    private void deletePost(Post post) {
+        Request request = new Request.Builder()
+                .url(AppConstant.BASE_URL + "/api/posts/" + post.getId())
+                .delete()
+                .addHeader("Authorization", "Bearer " + ACCESS_TOKEN)
+                .build();
+
+        client.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(@NonNull Call call, @NonNull IOException e) {
+                Log.e("Error", "Failed to delete post: " + e.getMessage());
+                requireActivity().runOnUiThread(() -> Toast.makeText(requireContext(), "Failed to delete post", Toast.LENGTH_SHORT).show());
+            }
+
+            @SuppressLint("NotifyDataSetChanged")
+            @Override
+            public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
+                if (response.isSuccessful()) {
+                    requireActivity().runOnUiThread(() -> {
+                        posts.remove(post);
+                        postAdapter.notifyItemRemoved(posts.indexOf(post));
+                        Toast.makeText(requireContext(), "Post deleted successfully", Toast.LENGTH_SHORT).show();
+                    });
+                }
+            }
+        });
+    }
+
+
+    @Override
+    public void onCreateOptionsMenu(@NonNull Menu menu, @NonNull MenuInflater inflater) {
+        inflater.inflate(R.menu.action_menu, menu);
+        super.onCreateOptionsMenu(menu, inflater);
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(@NonNull MenuItem item) {
+        if (item.getItemId() == R.id.action_delete_all) {
+            showDeleteConfirmationDialog();
+        } else {
+            return super.onOptionsItemSelected(item);
+        }
+        return true;
+    }
+
+    private void showDeleteConfirmationDialog() {
+        AlertDialog.Builder builder = new AlertDialog.Builder(requireContext());
+        builder.setTitle("Delete All Posts")
+                .setMessage("Are you sure you want to delete all posts?")
+                .setPositiveButton("Delete", (dialog, which) -> deleteAllPosts())
+                .setNegativeButton("Cancel", (dialog, which) -> dialog.dismiss())
+                .create();
+
+        AlertDialog dialog = builder.create();
+        Objects.requireNonNull(dialog.getWindow()).setBackgroundDrawableResource(R.drawable.dialog_background);
+        dialog.show();
+
+    }
+
+
+    private void deleteAllPosts() {
+        Request request = new Request.Builder()
+                .url(AppConstant.BASE_URL + "/api/posts/all")
+                .delete()
+                .addHeader("Authorization", "Bearer " + ACCESS_TOKEN)
+                .build();
+
+        client.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(@NonNull Call call, @NonNull IOException e) {
+                Log.e("Error", "Failed to delete all posts: " + e.getMessage());
+                requireActivity().runOnUiThread(() -> Toast.makeText(requireContext(), "Failed to delete all posts", Toast.LENGTH_SHORT).show());
+            }
+
+            @SuppressLint("NotifyDataSetChanged")
+            @Override
+            public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
+                if (response.isSuccessful()) {
+                    requireActivity().runOnUiThread(() -> {
+                        try {
+                            assert response.body() != null;
+                            String responseBody = response.body().string();
+                            if(responseBody.equals("No posts to delete"))
+                            {
+                                Toast.makeText(requireContext(), "No posts to delete", Toast.LENGTH_SHORT).show();
+                                return;
+                            }else {
+                                    if(responseBody.equals("All posts deleted successfully")) {
+                                        posts.clear();
+                                        postAdapter.notifyDataSetChanged();
+                                        Toast.makeText(requireContext(), "All posts deleted successfully", Toast.LENGTH_SHORT).show();
+                                    }
+                            }
+                        } catch (IOException e) {
+                            throw new RuntimeException(e);
+                        }
+
+                    });
+                } else {
+                    requireActivity().runOnUiThread(() -> Toast.makeText(requireContext(), "Failed to delete all posts", Toast.LENGTH_SHORT).show());
+                }
+            }
+        });
+    }
+
 }

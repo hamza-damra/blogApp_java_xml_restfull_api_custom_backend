@@ -20,7 +20,6 @@ public class Comment {
     private String body;
     private List<CommentReplay> replies;
 
-    // Add method to convert JSON to Comment object
     public static Comment fromJson(String json) {
         Gson gson = new Gson();
         return gson.fromJson(json, Comment.class);
