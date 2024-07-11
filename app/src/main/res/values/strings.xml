@@ -13,4 +13,9 @@
     <string name="textview">TextView</string>
     <string name="test_title">Test Title</string>
     <string name="action_delete_all">delete all posts</string>
+    <string name="remove_image_url">remove image</string>
+    <string name="add_image_url">add image</string>
+    <string name="add">ADD</string>
+    <string name="enter_image_url">Enter Image URL</string>
+    <string name="add_another_image">Add Another Image</string>
 </resources>

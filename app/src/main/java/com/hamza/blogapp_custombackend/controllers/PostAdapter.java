@@ -1,6 +1,5 @@
 package com.hamza.blogapp_custombackend.controllers;
 
-import android.content.Context;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -8,17 +7,16 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 import com.hamza.blogapp_custombackend.R;
 import com.hamza.blogapp_custombackend.models.Post;
+
 import java.util.List;
 
 public class PostAdapter extends RecyclerView.Adapter<PostViewHolder> {
 
-    private List<Post> posts;
-    private Context context;
-    private OnPostActionListener listener;
+    private final List<Post> posts;
+    private final OnPostActionListener listener;
 
-    public PostAdapter(List<Post> posts, Context context, OnPostActionListener listener) {
+    public PostAdapter(List<Post> posts, OnPostActionListener listener) {
         this.posts = posts;
-        this.context = context;
         this.listener = listener;
     }
 

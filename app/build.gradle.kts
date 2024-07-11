@@ -36,6 +36,7 @@ dependencies {
     implementation(libs.material)
     implementation(libs.okhttp)
     implementation(libs.material.v140)
+    implementation (libs.material)
     implementation(libs.lombok)
     annotationProcessor(libs.lombok)
     implementation(libs.gson)

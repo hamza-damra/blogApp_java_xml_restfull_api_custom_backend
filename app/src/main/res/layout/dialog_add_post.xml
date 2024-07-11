@@ -1,14 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <com.google.android.material.circularreveal.CircularRevealLinearLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
     android:padding="20dp"
-    android:background="@drawable/dialog_background"
-    tools:context=".YourActivity">
+    android:background="@drawable/dialog_background">
 
     <com.google.android.material.textview.MaterialTextView
         android:id="@+id/dialog_title"
@@ -72,6 +70,23 @@
             android:minLines="3" />
     </com.google.android.material.textfield.TextInputLayout>
 
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/rv_image_urls"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:visibility="visible" />
+
+    <TextView
+        android:id="@+id/btn_add_image_url"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:layout_gravity="end"
+        android:textStyle="bold"
+        android:text="@string/add_another_image"
+        android:layout_marginTop="8dp" />
+
     <com.google.android.material.circularreveal.CircularRevealLinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -91,9 +106,8 @@
             android:id="@+id/btn_add"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="ADD"
+            android:text="@string/add"
             android:textColor="@color/black"
             android:backgroundTint="@android:color/transparent" />
     </com.google.android.material.circularreveal.CircularRevealLinearLayout>
-
 </com.google.android.material.circularreveal.CircularRevealLinearLayout>

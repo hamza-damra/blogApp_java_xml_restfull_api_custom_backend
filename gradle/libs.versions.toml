@@ -1,5 +1,6 @@
 [versions]
 agp = "8.5.0"
+circularreveal = "2.0.1"
 googleMaterial = "1.4.0"
 gson = "2.10.1"
 junit = "4.13.2"
@@ -13,6 +14,7 @@ constraintlayout = "2.1.4"
 okhttp = "4.12.0"
 
 [libraries]
+circularreveal = { module = "com.github.ozodrukh:CircularReveal", version.ref = "circularreveal" }
 gson = { module = "com.google.code.gson:gson", version.ref = "gson" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 ext-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }

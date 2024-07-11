@@ -1,9 +1,10 @@
 package com.hamza.blogapp_custombackend.models;
 
-import com.google.gson.Gson;
-import java.util.List;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
+import com.google.gson.annotations.Expose;
+
+
+import java.util.Set;
+
 import lombok.Getter;
 import lombok.Setter;
 import lombok.ToString;
@@ -12,22 +13,29 @@ import lombok.ToString;
 @Setter
 @ToString
 public class Post {
+    @Expose(serialize = false)
     private int id;
-    private String title;
-    private String description;
-    private String content;
-    private List<Comment> comments;
 
-    public Post(String title, String description, String content, List<Comment> comments) {
+    @Expose
+    private String title;
+
+    @Expose
+    private String description;
+
+    @Expose
+    private String content;
+
+    @Expose
+    private Set<Comment> comments;
+
+    @Expose
+    private Set<Image> imageUrls;
+
+    public Post(String title, String description, String content, Set<Comment> comments, Set<Image> images) {
         this.title = title;
         this.description = description;
         this.content = content;
         this.comments = comments;
-    }
-
-    // Add method to convert JSON to Post object
-    public static Post fromJson(String json) {
-        Gson gson = new Gson();
-        return gson.fromJson(json, Post.class);
+        this.imageUrls = images;
     }
 }

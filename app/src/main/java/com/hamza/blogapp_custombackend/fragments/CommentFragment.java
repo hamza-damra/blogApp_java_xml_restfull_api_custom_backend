@@ -7,26 +7,22 @@ import android.view.ViewGroup;
 
 import androidx.fragment.app.Fragment;
 
+import com.google.gson.Gson;
 import com.hamza.blogapp_custombackend.R;
-
+import com.hamza.blogapp_custombackend.models.Post;
 
 public class CommentFragment extends Fragment {
 
-    private static final String ARG_PARAM1 = "param1";
-    private static final String ARG_PARAM2 = "param2";
-
-    private String mParam1;
-    private String mParam2;
+    private static final String ARG_POST = "post";
+    private Post post;
 
     public CommentFragment() {
     }
 
-
-    public static CommentFragment newInstance(String param1, String param2) {
+    public static CommentFragment newInstance(Post post) {
         CommentFragment fragment = new CommentFragment();
         Bundle args = new Bundle();
-        args.putString(ARG_PARAM1, param1);
-        args.putString(ARG_PARAM2, param2);
+        args.putString(ARG_POST, new Gson().toJson(post));
         fragment.setArguments(args);
         return fragment;
     }
@@ -35,8 +31,8 @@ public class CommentFragment extends Fragment {
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         if (getArguments() != null) {
-            mParam1 = getArguments().getString(ARG_PARAM1);
-            mParam2 = getArguments().getString(ARG_PARAM2);
+            String postJson = getArguments().getString(ARG_POST);
+            post = new Gson().fromJson(postJson, Post.class);
         }
     }
 

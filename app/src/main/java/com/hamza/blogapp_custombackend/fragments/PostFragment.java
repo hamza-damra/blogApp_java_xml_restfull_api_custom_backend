@@ -15,6 +15,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ImageButton;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
@@ -24,12 +25,17 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
+import com.google.android.material.textfield.TextInputEditText;
+import com.google.android.material.textview.MaterialTextView;
 import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.google.gson.reflect.TypeToken;
 import com.hamza.blogapp_custombackend.R;
+import com.hamza.blogapp_custombackend.controllers.ImageUrlAdapter;
 import com.hamza.blogapp_custombackend.controllers.PostAdapter;
+import com.hamza.blogapp_custombackend.models.Image;
 import com.hamza.blogapp_custombackend.models.Post;
 import com.hamza.blogapp_custombackend.utils.AppConstant;
 import com.hamza.blogapp_custombackend.validations.TokenManager;
@@ -37,8 +43,10 @@ import com.hamza.blogapp_custombackend.validations.TokenManager;
 import java.io.IOException;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 
 import okhttp3.Call;
 import okhttp3.Callback;
@@ -54,6 +62,9 @@ public class PostFragment extends Fragment implements PostAdapter.OnPostActionLi
     private PostAdapter postAdapter;
     private List<Post> posts;
     private final OkHttpClient client = new OkHttpClient();
+    private RecyclerView rvImageUrls;
+    private ImageUrlAdapter imageUrlAdapter;
+    private List<String> imageUrls;
     private TokenManager tokenManager;
 
     public PostFragment() {
@@ -78,10 +89,12 @@ public class PostFragment extends Fragment implements PostAdapter.OnPostActionLi
         recyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
         posts = new ArrayList<>();
         getPosts();
-        postAdapter = new PostAdapter(posts, requireContext(), this);
+        postAdapter = new PostAdapter(posts, PostFragment.this);
         recyclerView.setAdapter(postAdapter);
+
         FloatingActionButton fab = view.findViewById(R.id.floatingActionButton);
         fab.setOnClickListener(v -> showAddPostDialog());
+
         return view;
     }
 
@@ -114,8 +127,7 @@ public class PostFragment extends Fragment implements PostAdapter.OnPostActionLi
 
                     // Parse the JSON response
                     JsonObject jsonObject = JsonParser.parseString(jsonResponse).getAsJsonObject();
-                    Type listType = new TypeToken<ArrayList<Post>>() {
-                    }.getType();
+                    Type listType = new TypeToken<ArrayList<Post>>() {}.getType();
                     List<Post> postList = new Gson().fromJson(jsonObject.getAsJsonArray("content"), listType);
 
                     requireActivity().runOnUiThread(() -> {
@@ -144,14 +156,54 @@ public class PostFragment extends Fragment implements PostAdapter.OnPostActionLi
         Button btnCancel = dialogView.findViewById(R.id.btn_cancel);
         Button btnAdd = dialogView.findViewById(R.id.btn_add);
 
+        rvImageUrls = dialogView.findViewById(R.id.rv_image_urls);
+        rvImageUrls.setLayoutManager(new LinearLayoutManager(getContext()));
+        imageUrls = new ArrayList<>();
+        imageUrls.add("");
+        imageUrlAdapter = new ImageUrlAdapter(imageUrls, position -> {
+            if (position >= 0 && position < imageUrls.size()) {
+                imageUrls.remove(position);
+                imageUrlAdapter.notifyItemRemoved(position);
+                imageUrlAdapter.notifyItemRangeChanged(position, imageUrls.size());
+            }
+        });
+        rvImageUrls.setAdapter(imageUrlAdapter);
+
+        MaterialTextView btnAddImageUrl = dialogView.findViewById(R.id.btn_add_image_url);
+        btnAddImageUrl.setOnClickListener(v -> {
+            imageUrls.add("");
+            imageUrlAdapter.notifyItemInserted(imageUrls.size() - 1);
+        });
+
         btnCancel.setOnClickListener(v -> dialog.dismiss());
         btnAdd.setOnClickListener(v -> {
             String title = etTitle.getText().toString().trim();
             String description = etDescription.getText().toString().trim();
             String content = etContent.getText().toString().trim();
 
+            List<String> collectedImageUrls = new ArrayList<>();
+            for (int i = 0; i < imageUrlAdapter.getItemCount(); i++) {
+                View view = rvImageUrls.getChildAt(i);
+                if (view != null) {
+                    TextInputEditText etImageUrl = view.findViewById(R.id.et_image_url);
+                    String imageUrl = Objects.requireNonNull(etImageUrl.getText()).toString().trim();
+                    if (!imageUrl.isEmpty()) {
+                        collectedImageUrls.add(imageUrl);
+                    }
+                }
+            }
+
+            Log.d("AddPostDialog", "Title: " + title);
+            Log.d("AddPostDialog", "Description: " + description);
+            Log.d("AddPostDialog", "Content: " + content);
+            Log.d("AddPostDialog", "Image URLs: " + collectedImageUrls);
+
             if (!title.isEmpty() && !description.isEmpty() && !content.isEmpty()) {
-                addNewPost(title, description, content);
+                Set<Image> imageList = new HashSet<>();
+                for (String imageUrl : collectedImageUrls) {
+                    imageList.add(new Image(imageUrl));
+                }
+                addNewPost(title, description, content, imageList);
                 dialog.dismiss();
             } else {
                 Toast.makeText(requireContext(), "All fields are required", Toast.LENGTH_SHORT).show();
@@ -161,9 +213,14 @@ public class PostFragment extends Fragment implements PostAdapter.OnPostActionLi
         dialog.show();
     }
 
-    private void addNewPost(String title, String description, String content) {
-        Post newPost = new Post(title, description, content, new ArrayList<>());
-        String postJson = new Gson().toJson(newPost);
+
+    private void addNewPost(String title, String description, String content, Set<Image> images) {
+        Post newPost = new Post(title, description, content, new HashSet<>(), images);
+
+        Gson gson = new GsonBuilder().excludeFieldsWithoutExposeAnnotation().create();
+        String postJson = gson.toJson(newPost);
+
+        Log.d("AddNewPost", "Post JSON: " + postJson);
 
         RequestBody body = RequestBody.create(postJson, MediaType.get("application/json; charset=utf-8"));
         Request request = new Request.Builder()
@@ -175,16 +232,17 @@ public class PostFragment extends Fragment implements PostAdapter.OnPostActionLi
         client.newCall(request).enqueue(new Callback() {
             @Override
             public void onFailure(@NonNull Call call, @NonNull IOException e) {
-                Log.e("Error", "Failed to add post: " + e.getMessage());
+                Log.e("AddNewPost", "Failed to add post: " + e.getMessage());
                 requireActivity().runOnUiThread(() -> Toast.makeText(requireContext(), "Failed to add post", Toast.LENGTH_SHORT).show());
             }
 
-            @SuppressLint("NotifyDataSetChanged")
             @Override
             public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
                 if (response.isSuccessful() && response.body() != null) {
                     String jsonResponse = response.body().string();
-                    Post createdPost = new Gson().fromJson(jsonResponse, Post.class);
+                    Post createdPost = gson.fromJson(jsonResponse, Post.class);
+
+                    Log.d("AddNewPost", "Post added: " + jsonResponse);
 
                     requireActivity().runOnUiThread(() -> {
                         posts.add(createdPost);
@@ -192,10 +250,18 @@ public class PostFragment extends Fragment implements PostAdapter.OnPostActionLi
                         recyclerView.scrollToPosition(posts.size() - 1);
                         Toast.makeText(requireContext(), "Post added successfully", Toast.LENGTH_SHORT).show();
                     });
+                } else {
+                    Log.e("AddNewPost", "Response not successful. Code: " + response.code());
+                    if (response.body() != null) {
+                        Log.e("AddNewPost", "Response body: " + response.body().string());
+                    }
                 }
             }
         });
     }
+
+
+
 
     @Override
     public void onPostEdit(Post post) {
@@ -232,18 +298,43 @@ public class PostFragment extends Fragment implements PostAdapter.OnPostActionLi
             String description = etDescription.getText().toString().trim();
             String content = etContent.getText().toString().trim();
 
+            // Collect the URLs from the adapter
+            Set<Image> images = new HashSet<>();
+            for (int i = 0; i < imageUrlAdapter.getItemCount(); i++) {
+                View view = rvImageUrls.getChildAt(i);
+                if (view != null) {
+                    TextInputEditText etImageUrl = view.findViewById(R.id.et_image_url);
+                    String imageUrl = Objects.requireNonNull(etImageUrl.getText()).toString().trim();
+                    if (!imageUrl.isEmpty()) {
+                        images.add(new Image(imageUrl));
+                    }
+                }
+            }
+
+            Log.d("AddPostDialog", "Title: " + title);
+            Log.d("AddPostDialog", "Description: " + description);
+            Log.d("AddPostDialog", "Content: " + content);
+            Log.d("AddPostDialog", "Images: " + images);
+
             if (!title.isEmpty() && !description.isEmpty() && !content.isEmpty()) {
-                editPost(post, title, description, content);
+                List<String> imageString = new ArrayList<>();
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                    imageString = images.stream().map(Image::getUrl).toList();
+                }
+                Set<Image> updatedImages = new HashSet<>();
+                for (String imageUrl : imageString) {
+                    updatedImages.add(new Image(imageUrl));
+                }
+                addNewPost(title, description, content, updatedImages);
                 dialog.dismiss();
             } else {
                 Toast.makeText(requireContext(), "All fields are required", Toast.LENGTH_SHORT).show();
             }
         });
-
-        dialog.show();
     }
 
-    private void editPost(Post post, String title, String description, String content) {
+
+        private void editPost(Post post, String title, String description, String content) {
         post.setTitle(title);
         post.setDescription(description);
         post.setContent(content);
@@ -295,15 +386,16 @@ public class PostFragment extends Fragment implements PostAdapter.OnPostActionLi
             public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
                 if (response.isSuccessful()) {
                     requireActivity().runOnUiThread(() -> {
+                        int position = posts.indexOf(post);
                         posts.remove(post);
-                        postAdapter.notifyItemRemoved(posts.indexOf(post));
+                        postAdapter.notifyItemRemoved(position);
+                        postAdapter.notifyItemRangeChanged(position, posts.size());
                         Toast.makeText(requireContext(), "Post deleted successfully", Toast.LENGTH_SHORT).show();
                     });
                 }
             }
         });
     }
-
 
     @Override
     public void onCreateOptionsMenu(@NonNull Menu menu, @NonNull MenuInflater inflater) {
@@ -335,7 +427,6 @@ public class PostFragment extends Fragment implements PostAdapter.OnPostActionLi
 
     }
 
-
     private void deleteAllPosts() {
         Request request = new Request.Builder()
                 .url(AppConstant.BASE_URL + "/api/posts/all")
@@ -358,21 +449,17 @@ public class PostFragment extends Fragment implements PostAdapter.OnPostActionLi
                         try {
                             assert response.body() != null;
                             String responseBody = response.body().string();
-                            if(responseBody.equals("No posts to delete"))
-                            {
+                            if(responseBody.equals("No posts to delete")) {
                                 Toast.makeText(requireContext(), "No posts to delete", Toast.LENGTH_SHORT).show();
                                 return;
-                            }else {
-                                    if(responseBody.equals("All posts deleted successfully")) {
-                                        posts.clear();
-                                        postAdapter.notifyDataSetChanged();
-                                        Toast.makeText(requireContext(), "All posts deleted successfully", Toast.LENGTH_SHORT).show();
-                                    }
+                            } else if(responseBody.equals("All posts deleted successfully")) {
+                                posts.clear();
+                                postAdapter.notifyDataSetChanged();
+                                Toast.makeText(requireContext(), "All posts deleted successfully", Toast.LENGTH_SHORT).show();
                             }
                         } catch (IOException e) {
                             throw new RuntimeException(e);
                         }
-
                     });
                 } else {
                     requireActivity().runOnUiThread(() -> Toast.makeText(requireContext(), "Failed to delete all posts", Toast.LENGTH_SHORT).show());
@@ -380,5 +467,4 @@ public class PostFragment extends Fragment implements PostAdapter.OnPostActionLi
             }
         });
     }
-
 }

@@ -13,6 +13,8 @@ import com.hamza.blogapp_custombackend.R;
 import com.hamza.blogapp_custombackend.fragments.PostFragment;
 import com.hamza.blogapp_custombackend.validations.TokenManager;
 
+import java.util.Objects;
+
 public class MainActivity extends AppCompatActivity {
     private TokenManager tokenManager;
 
@@ -24,7 +26,7 @@ public class MainActivity extends AppCompatActivity {
 
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
-        getSupportActionBar().setTitle("Posts Screen");
+        Objects.requireNonNull(getSupportActionBar()).setTitle("Posts Screen");
 
         tokenManager = new TokenManager(getSharedPreferences("token", MODE_PRIVATE), getSharedPreferences("token", MODE_PRIVATE).edit());
 
