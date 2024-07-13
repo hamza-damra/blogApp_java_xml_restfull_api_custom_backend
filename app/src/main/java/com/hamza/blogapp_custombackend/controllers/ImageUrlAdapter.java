@@ -28,6 +28,7 @@ public class ImageUrlAdapter extends RecyclerView.Adapter<ImageUrlViewHolder> {
     public void onBindViewHolder(@NonNull ImageUrlViewHolder holder, int position) {
         String imageUrl = imageUrlList.get(position);
         holder.etImageUrl.setText(imageUrl);
+        holder.bind(imageUrl, onRemoveClickListener);
 
         holder.btnRemove.setOnClickListener(v -> onRemoveClickListener.onRemoveClick(holder.getAdapterPosition()));
     }
