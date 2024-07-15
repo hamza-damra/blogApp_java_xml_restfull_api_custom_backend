@@ -7,6 +7,11 @@ public class Validation {
         return email.matches(emailPattern);
     }
 
+    public static boolean validateLength(String input, int minLength, int maxLength)
+    {
+        return input.length() >= minLength && input.length() <= maxLength;
+    }
+
     public static boolean validateEmail(String email)
     {
         return isValidEmail(email) && !email.isEmpty();

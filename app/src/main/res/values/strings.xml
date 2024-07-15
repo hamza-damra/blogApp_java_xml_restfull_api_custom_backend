@@ -18,4 +18,5 @@
     <string name="add">ADD</string>
     <string name="enter_image_url">Enter Image URL</string>
     <string name="add_another_image">Add Another Image</string>
+    <string name="action_logout">logout</string>
 </resources>

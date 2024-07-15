@@ -1,7 +1,5 @@
 package com.hamza.blogapp_custombackend.screens;
 
-import static com.hamza.blogapp_custombackend.utils.AppConstant.BASE_URL;
-
 import android.content.Intent;
 import android.os.Bundle;
 import android.util.Log;
@@ -9,38 +7,24 @@ import android.view.View;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.graphics.Insets;
-import androidx.core.view.ViewCompat;
-import androidx.core.view.WindowInsetsCompat;
 
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.textfield.TextInputEditText;
 import com.hamza.blogapp_custombackend.R;
+import com.hamza.blogapp_custombackend.network.NetworkManager;
 import com.hamza.blogapp_custombackend.utils.KeyboardVisibilityUtil;
-import com.hamza.blogapp_custombackend.validations.TokenManager;
+import com.hamza.blogapp_custombackend.network.TokenManager;
 import com.hamza.blogapp_custombackend.validations.Validation;
 
-import org.json.JSONException;
-import org.json.JSONObject;
-
-import java.io.IOException;
 import java.util.Objects;
-
-import okhttp3.Call;
-import okhttp3.Callback;
-import okhttp3.OkHttpClient;
-import okhttp3.Request;
-import okhttp3.RequestBody;
-import okhttp3.Response;
 
 public class LoginActivity extends AppCompatActivity {
     TextInputEditText username, password;
     MaterialButton button_login;
     TextView tv_forgot_password;
-    private final OkHttpClient client = new OkHttpClient();
     private TokenManager tokenManager;
+    private NetworkManager networkManager;
     private View cardView;
 
     @Override
@@ -49,12 +33,8 @@ public class LoginActivity extends AppCompatActivity {
         setContentView(R.layout.activity_login);
 
         tokenManager = new TokenManager(getSharedPreferences("token", MODE_PRIVATE), getSharedPreferences("token", MODE_PRIVATE).edit());
+        networkManager = new NetworkManager(this, tokenManager);
 
-        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
-            Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
-            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
-            return insets;
-        });
         initViews();
 
         tv_forgot_password.setOnClickListener(v -> {
@@ -63,23 +43,18 @@ public class LoginActivity extends AppCompatActivity {
         });
 
         button_login.setOnClickListener(v -> {
-            if(Validation.validateNotEmpty(Objects.requireNonNull(username.getText()).toString()) && Validation.validateNotEmpty(Objects.requireNonNull(password.getText()).toString())) {
+            if (Validation.validateNotEmpty(Objects.requireNonNull(username.getText()).toString()) && Validation.validateNotEmpty(Objects.requireNonNull(password.getText()).toString())) {
                 String user = Objects.requireNonNull(username.getText()).toString();
                 String pass = Objects.requireNonNull(password.getText()).toString();
                 login(user, pass);
-            }else{
+            } else {
                 Toast.makeText(this, "Please fill out all required fields", Toast.LENGTH_SHORT).show();
             }
         });
 
         View rootLayout = findViewById(R.id.main);
         cardView = findViewById(R.id.card_view);
-        KeyboardVisibilityUtil.setKeyboardVisibilityListener((rootLayout), new KeyboardVisibilityUtil.KeyboardVisibilityListener() {
-            @Override
-            public void onKeyboardVisibilityChanged(boolean isVisible) {
-                adjustCardPosition(isVisible);
-            }
-        });
+        KeyboardVisibilityUtil.setKeyboardVisibilityListener(rootLayout, this::adjustCardPosition);
     }
 
     private void initViews() {
@@ -90,37 +65,20 @@ public class LoginActivity extends AppCompatActivity {
     }
 
     private void login(String username, String password) {
-        Request request = new Request.Builder()
-                .url(BASE_URL + "/api/users/login?username=" + username + "&password=" + password)
-                .post(RequestBody.create(null, ""))
-                .build();
-
-        client.newCall(request).enqueue(new Callback() {
+        networkManager.login(username, password, new NetworkManager.NetworkCallback<String>() {
             @Override
-            public void onFailure(@NonNull Call call, @NonNull IOException e) {
-                runOnUiThread(() -> Toast.makeText(LoginActivity.this, "Login failed", Toast.LENGTH_SHORT).show());
-                Log.e("Login", "Login failed".concat(e.getMessage()));
+            public void onSuccess(String token) {
+                tokenManager.saveToken(token);
+                Intent intent = new Intent(LoginActivity.this, MainActivity.class);
+                startActivity(intent);
+                finish();
+                Toast.makeText(LoginActivity.this, "Login successful", Toast.LENGTH_SHORT).show();
             }
 
             @Override
-            public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
-                if (response.isSuccessful() && response.body() != null) {
-                    try {
-                        JSONObject jsonObject = new JSONObject(response.body().string());
-                        String token = jsonObject.getString("token");
-                        runOnUiThread(() -> {
-                            tokenManager.saveToken(token);
-                            Intent intent = new Intent(LoginActivity.this, MainActivity.class);
-                            startActivity(intent);
-                            finish();
-                            Toast.makeText(LoginActivity.this, "Login successful", Toast.LENGTH_SHORT).show();
-                        });
-                    } catch (JSONException e) {
-                        runOnUiThread(() -> Toast.makeText(LoginActivity.this, "Login failed", Toast.LENGTH_SHORT).show());
-                    }
-                } else {
-                    runOnUiThread(() -> Toast.makeText(LoginActivity.this, "Login failed", Toast.LENGTH_SHORT).show());
-                }
+            public void onFailure(String error) {
+                runOnUiThread(() -> Toast.makeText(LoginActivity.this, error, Toast.LENGTH_SHORT).show());
+                Log.e("Login", error);
             }
         });
     }
@@ -128,7 +86,7 @@ public class LoginActivity extends AppCompatActivity {
     private void adjustCardPosition(boolean isVisible) {
         if (cardView != null) {
             if (isVisible) {
-                cardView.animate().translationY(-200).setDuration(300).start(); // Adjust the value as needed
+                cardView.animate().translationY(+20).setDuration(300).start(); // Adjust the value as needed
             } else {
                 cardView.animate().translationY(0).setDuration(300).start();
             }

@@ -35,6 +35,7 @@ dependencies {
     implementation(libs.appcompat)
     implementation(libs.material)
     implementation(libs.okhttp)
+    implementation("com.auth0:java-jwt:3.18.2")
     implementation(libs.material.v140)
     implementation (libs.material)
     implementation(libs.lombok)
