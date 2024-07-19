@@ -52,9 +52,15 @@ public class MainActivity extends AppCompatActivity {
         if (tokenManager.isTokenPresent()) {
             UserInfo userInfo = tokenManager.getUserInfoFromToken();
             if (userInfo != null) {
-                Log.d("Token", userInfo.getUsername());
-                Log.d("Token", userInfo.getIssuedAt().toString());
-                Log.d("Token", userInfo.getExpiresAt().toString());
+                if (userInfo.getUsername() != null) {
+                    Log.d("Token", userInfo.getUsername());
+                }
+                if (userInfo.getIssuedAt() != null) {
+                    Log.d("Token", userInfo.getIssuedAt().toString());
+                }
+                if (userInfo.getExpiresAt() != null) {
+                    Log.d("Token", userInfo.getExpiresAt().toString());
+                }
                 return tokenManager.isTokenValid();
             }
         }

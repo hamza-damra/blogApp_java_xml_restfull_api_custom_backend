@@ -4,6 +4,7 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -26,6 +27,7 @@ public class LoginActivity extends AppCompatActivity {
     private TokenManager tokenManager;
     private NetworkManager networkManager;
     private View cardView;
+    private ProgressBar progressBar;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -62,13 +64,16 @@ public class LoginActivity extends AppCompatActivity {
         password = findViewById(R.id.et_password);
         button_login = findViewById(R.id.btn_login);
         tv_forgot_password = findViewById(R.id.tv_forgot_password);
+        progressBar = findViewById(R.id.progress_bar);
     }
 
     private void login(String username, String password) {
+        progressBar.setVisibility(View.VISIBLE);
         networkManager.login(username, password, new NetworkManager.NetworkCallback<String>() {
             @Override
-            public void onSuccess(String token) {
+            public void onSuccess(String token, String... message) {
                 tokenManager.saveToken(token);
+                progressBar.setVisibility(View.GONE);
                 Intent intent = new Intent(LoginActivity.this, MainActivity.class);
                 startActivity(intent);
                 finish();
@@ -77,6 +82,7 @@ public class LoginActivity extends AppCompatActivity {
 
             @Override
             public void onFailure(String error) {
+                progressBar.setVisibility(View.GONE);
                 runOnUiThread(() -> Toast.makeText(LoginActivity.this, error, Toast.LENGTH_SHORT).show());
                 Log.e("Login", error);
             }

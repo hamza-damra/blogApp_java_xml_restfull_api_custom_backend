@@ -1,6 +1,7 @@
 package com.hamza.blogapp_custombackend.network;
 
 import android.content.SharedPreferences;
+import android.util.Log;
 
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.exceptions.JWTDecodeException;
@@ -17,6 +18,11 @@ public class TokenManager {
     public TokenManager(SharedPreferences sharedPreferences, SharedPreferences.Editor editor) {
         this.sharedPreferences = sharedPreferences;
         this.editor = editor;
+    }
+
+    // get Instance of TokenManager
+    public static TokenManager getInstance(SharedPreferences sharedPreferences, SharedPreferences.Editor editor) {
+        return new TokenManager(sharedPreferences, editor);
     }
 
     public void saveToken(String token) {
@@ -46,8 +52,10 @@ public class TokenManager {
         try {
             DecodedJWT decodedJWT = JWT.decode(token);
             String username = decodedJWT.getSubject();
+            String imageUrl = decodedJWT.getClaim("imageUrl").asString();
             Date issuedAt = decodedJWT.getIssuedAt();
             Date expiresAt = decodedJWT.getExpiresAt();
+            Log.d("UserImage", "UserImage: " + imageUrl);
 
             return new UserInfo(username, issuedAt, expiresAt);
         } catch (JWTDecodeException e) {

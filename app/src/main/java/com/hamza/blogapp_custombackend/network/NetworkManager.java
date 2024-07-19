@@ -3,15 +3,22 @@ package com.hamza.blogapp_custombackend.network;
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
+import android.os.Handler;
+import android.os.Looper;
+import android.util.Log;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import com.google.gson.JsonSyntaxException;
 import com.google.gson.reflect.TypeToken;
+import com.hamza.blogapp_custombackend.models.Comment;
 import com.hamza.blogapp_custombackend.models.Image;
 import com.hamza.blogapp_custombackend.models.Post;
 import com.hamza.blogapp_custombackend.models.User;
@@ -29,41 +36,76 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
 import okhttp3.Call;
 import okhttp3.Callback;
+import okhttp3.EventListener;
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
+import okhttp3.sse.EventSource;
+import okhttp3.sse.EventSourceListener;
+import okhttp3.sse.EventSources;
 
 public class NetworkManager {
 
     private final OkHttpClient client;
     private final TokenManager tokenManager;
     private final Context context;
+    private EventSource eventSource;
+    private int retryCount = 0;
+    private static final int MAX_RETRY_COUNT = 5;
+    private Activity activity;
 
     public NetworkManager(Context context, TokenManager tokenManager) {
-        this.client = new OkHttpClient();
+        this.client = new OkHttpClient.Builder()
+                .connectTimeout(300, TimeUnit.HOURS)
+                .writeTimeout(300, TimeUnit.HOURS)
+                .readTimeout(300, TimeUnit.HOURS)
+                .build();
         this.tokenManager = tokenManager;
         this.context = context;
+        if(context instanceof Activity){
+            this.activity = (Activity) context;
+        }
+
+    }
+
+    // get Instance
+    public static NetworkManager getInstance(Context context, TokenManager tokenManager) {
+        return new NetworkManager(context, tokenManager);
     }
 
     public interface NetworkCallback<T> {
-        void onSuccess(T result);
+        void onSuccess(T result, String... message);
 
         void onFailure(String error);
     }
 
     private void handleInvalidToken() {
-        ((Activity) context).runOnUiThread(() -> {
+        runOnUiThread(() -> {
             tokenManager.clearToken();
             Intent intent = new Intent(context, LoginActivity.class);
             context.startActivity(intent);
-            ((Activity) context).runOnUiThread(() -> Toast.makeText(context, "Your session has expired", Toast.LENGTH_SHORT).show());
-            ((Activity) context).finish();
+            Toast.makeText(context, "Your session has expired", Toast.LENGTH_SHORT).show();
+            if(activity!= null)
+            {
+                activity.finish();
+            }else {
+               throw new IllegalStateException("Activity not found");
+            }
         });
+    }
+
+    private void runOnUiThread(Runnable action) {
+        if(activity != null){
+            activity.runOnUiThread(action);
+        }else {
+            throw new IllegalStateException("Activity not found");
+        }
     }
 
     public void login(String username, String password, NetworkCallback<String> callback) {
@@ -75,7 +117,7 @@ public class NetworkManager {
         client.newCall(request).enqueue(new Callback() {
             @Override
             public void onFailure(@NonNull Call call, @NonNull IOException e) {
-                ((Activity) context).runOnUiThread(() -> callback.onFailure("Login failed: " + e.getMessage()));
+                runOnUiThread(() -> callback.onFailure("Login failed: " + e.getMessage()));
             }
 
             @Override
@@ -84,12 +126,12 @@ public class NetworkManager {
                     try {
                         JSONObject jsonObject = new JSONObject(response.body().string());
                         String token = jsonObject.getString("token");
-                        ((Activity) context).runOnUiThread(() -> callback.onSuccess(token));
+                        runOnUiThread(() -> callback.onSuccess(token));
                     } catch (JSONException e) {
-                        ((Activity) context).runOnUiThread(() -> callback.onFailure("Failed to parse login response"));
+                        runOnUiThread(() -> callback.onFailure("Failed to parse login response"));
                     }
                 } else {
-                    ((Activity) context).runOnUiThread(() -> callback.onFailure("Login failed: " + response.message()));
+                    runOnUiThread(() -> callback.onFailure("Login failed: " + response.message()));
                 }
             }
         });
@@ -108,7 +150,7 @@ public class NetworkManager {
         client.newCall(request).enqueue(new Callback() {
             @Override
             public void onFailure(@NonNull Call call, @NonNull IOException e) {
-                ((Activity) context).runOnUiThread(() -> callback.onFailure("Registration failed: " + e.getMessage()));
+                runOnUiThread(() -> callback.onFailure("Registration failed: " + e.getMessage()));
             }
 
             @Override
@@ -119,18 +161,18 @@ public class NetworkManager {
 
                     if (response.isSuccessful()) {
                         String token = jsonObject.getString("token");
-                        ((Activity) context).runOnUiThread(() -> callback.onSuccess(token));
+                        runOnUiThread(() -> callback.onSuccess(token));
                     } else {
-                        ((Activity) context).runOnUiThread(() -> {
+                        runOnUiThread(() -> {
                             try {
-                                callback.onFailure("Registration failed: " + jsonObject.getString("message"));
+                                callback.onFailure("Registration failed: " + jsonObject.getString("username"));
                             } catch (JSONException e) {
                                 throw new RuntimeException(e);
                             }
                         });
                     }
                 } catch (JSONException e) {
-                    ((Activity) context).runOnUiThread(() -> callback.onFailure("Failed to parse registration response"));
+                    runOnUiThread(() -> callback.onFailure("Failed to parse registration response"));
                 }
             }
         });
@@ -145,7 +187,7 @@ public class NetworkManager {
         client.newCall(request).enqueue(new Callback() {
             @Override
             public void onFailure(@NonNull Call call, @NonNull IOException e) {
-                ((Activity) context).runOnUiThread(() -> callback.onFailure("Failed to load roles: " + e.getMessage()));
+                Log.d("NetworkService", "Failed to load roles", e);
             }
 
             @Override
@@ -165,12 +207,12 @@ public class NetworkManager {
                                 rolesList.add(extracted);
                             }
                         }
-                        ((Activity) context).runOnUiThread(() -> callback.onSuccess(rolesList));
+                        runOnUiThread(() -> callback.onSuccess(rolesList));
                     } catch (JSONException e) {
-                        ((Activity) context).runOnUiThread(() -> callback.onFailure("Failed to parse roles response"));
+                        runOnUiThread(() -> callback.onFailure("Failed to parse roles response"));
                     }
                 } else {
-                    ((Activity) context).runOnUiThread(() -> callback.onFailure("Failed to load roles: " + response.message()));
+                    Log.d("NetworkService", "Failed to load roles: " + response.message());
                 }
             }
         });
@@ -191,7 +233,8 @@ public class NetworkManager {
         client.newCall(request).enqueue(new Callback() {
             @Override
             public void onFailure(@NonNull Call call, @NonNull IOException e) {
-                ((Activity) context).runOnUiThread(() -> callback.onFailure("Failed to load posts: " + e.getMessage()));
+               Log.d("NetworkService", "Failed to load posts", e);
+               handleInvalidToken();
             }
 
             @Override
@@ -201,12 +244,56 @@ public class NetworkManager {
                     JsonObject jsonObject = JsonParser.parseString(jsonResponse).getAsJsonObject();
                     Type listType = new TypeToken<ArrayList<Post>>() {}.getType();
                     List<Post> postList = new Gson().fromJson(jsonObject.getAsJsonArray("content"), listType);
-                    ((Activity) context).runOnUiThread(() -> callback.onSuccess(postList));
+                    runOnUiThread(() -> callback.onSuccess(postList));
                 } else {
-                    ((Activity) context).runOnUiThread(() -> callback.onFailure("Failed to load posts: " + response.message()));
+                    Log.d("NetworkService", "Failed to load posts: " + response.message());
+                    handleInvalidToken();
                 }
             }
         });
+    }
+
+    public void startListeningForNewPosts(NetworkCallback<Post> callback) {
+        if (!tokenManager.isTokenValid()) {
+            handleInvalidToken();
+            return;
+        }
+
+        Request request = new Request.Builder()
+                .url(AppConstant.BASE_URL + "/api/posts/sse")
+                .addHeader("Authorization", "Bearer " + tokenManager.getToken())
+                .build();
+
+        eventSource = EventSources.createFactory(client).newEventSource(request, new EventSourceListener() {
+            @Override
+            public void onOpen(@NonNull EventSource eventSource, @NonNull Response response) {
+                Log.d("SSE", "Connection opened");
+            }
+
+            @Override
+            public void onEvent(@NonNull EventSource eventSource, @Nullable String id, @Nullable String type, @NonNull String data) {
+                Log.d("SSE", "New event received: " + data);
+                Post post = new Gson().fromJson(data, Post.class);
+                runOnUiThread(() -> callback.onSuccess(post));
+            }
+
+            @Override
+            public void onClosed(@NonNull EventSource eventSource) {
+                Log.d("SSE", "Connection closed");
+            }
+
+            @Override
+            public void onFailure(@NonNull EventSource eventSource, @Nullable Throwable t, @Nullable Response response) {
+                Log.e("SSE", "Connection failed", t);
+            }
+        });
+    }
+
+
+    public void stopListeningForNewPosts() {
+        if (eventSource != null) {
+            eventSource.cancel();
+        }
     }
 
     public void addNewPost(String title, String description, String content, Set<Image> images, NetworkCallback<Post> callback) {
@@ -229,31 +316,37 @@ public class NetworkManager {
         client.newCall(request).enqueue(new Callback() {
             @Override
             public void onFailure(@NonNull Call call, @NonNull IOException e) {
-                ((Activity) context).runOnUiThread(() -> callback.onFailure("Failed to add post: " + e.getMessage()));
+                Log.d("NetworkService", "Failed to add post", e);
+                runOnUiThread(() -> callback.onFailure("Failed to add post: " + e.getMessage()));
             }
 
             @Override
             public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
                 if (response.isSuccessful() && response.body() != null) {
-                    String jsonResponse = response.body().string();
-                    Post createdPost = gson.fromJson(jsonResponse, Post.class);
-                    ((Activity) context).runOnUiThread(() -> callback.onSuccess(createdPost));
+                    try {
+                        String jsonResponse = response.body().string();
+                        Post createdPost = gson.fromJson(jsonResponse, Post.class);
+                        runOnUiThread(() -> callback.onSuccess(createdPost));
+                    } catch (JsonSyntaxException e) {
+                        Log.e("NetworkService", "Failed to parse JSON response", e);
+                        handleInvalidToken();
+
+                    }
                 } else {
                     String errorMessage = "Failed to add post";
-                    String errorBody;
                     if (response.body() != null) {
                         try {
-                            errorBody = response.body().string();
+                            String errorBody = response.body().string();
                             JsonObject jsonObject = JsonParser.parseString(errorBody).getAsJsonObject();
                             if (jsonObject.has("title")) {
                                 errorMessage = jsonObject.get("title").getAsString();
                             }
-                        } catch (IOException ignored) {
-                            ((Activity) context).runOnUiThread(() -> callback.onFailure("Failed to parse error response"));
+                        } catch (IOException | JsonSyntaxException ignored) {
+                            runOnUiThread(() -> callback.onFailure("Failed to parse error response"));
                         }
                     }
                     String finalErrorMessage = errorMessage;
-                    ((Activity) context).runOnUiThread(() -> callback.onFailure(finalErrorMessage));
+                    runOnUiThread(() -> callback.onFailure(finalErrorMessage));
                 }
             }
         });
@@ -284,15 +377,16 @@ public class NetworkManager {
         client.newCall(request).enqueue(new Callback() {
             @Override
             public void onFailure(@NonNull Call call, @NonNull IOException e) {
-                ((Activity) context).runOnUiThread(() -> callback.onFailure("Failed to edit post: " + e.getMessage()));
+                runOnUiThread(() -> callback.onFailure("Failed to edit post: " + e.getMessage()));
             }
 
             @Override
             public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
                 if (response.isSuccessful() && response.body() != null) {
-                    ((Activity) context).runOnUiThread(() -> callback.onSuccess(post));
+                    runOnUiThread(() -> callback.onSuccess(post));
                 } else {
-                    ((Activity) context).runOnUiThread(() -> callback.onFailure("Failed to edit post: " + response.message()));
+                    runOnUiThread(() -> callback.onFailure("Failed to edit post: " + response.message()));
+                    Log.d("PostFragment", "Failed to edit post: "+response.message());
                 }
             }
         });
@@ -313,15 +407,16 @@ public class NetworkManager {
         client.newCall(request).enqueue(new Callback() {
             @Override
             public void onFailure(@NonNull Call call, @NonNull IOException e) {
-                ((Activity) context).runOnUiThread(() -> callback.onFailure("Failed to delete post: " + e.getMessage()));
+                runOnUiThread(() -> callback.onFailure("Failed to delete post: " + e.getMessage()));
+                Log.d("PostFragment", "Failed to delete post: "+e.getMessage());
             }
 
             @Override
             public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
                 if (response.isSuccessful()) {
-                    ((Activity) context).runOnUiThread(() -> callback.onSuccess(null));
+                    runOnUiThread(() -> callback.onSuccess(null));
                 } else {
-                    ((Activity) context).runOnUiThread(() -> callback.onFailure("Failed to delete post: " + response.message()));
+                    runOnUiThread(() -> callback.onFailure("Failed to delete post: " + response.message()));
                 }
             }
         });
@@ -342,20 +437,66 @@ public class NetworkManager {
         client.newCall(request).enqueue(new Callback() {
             @Override
             public void onFailure(@NonNull Call call, @NonNull IOException e) {
-                ((Activity) context).runOnUiThread(() -> callback.onFailure("Failed to delete all posts: " + e.getMessage()));
+                runOnUiThread(() -> callback.onFailure("Failed to delete all posts: " + e.getMessage()));
+                Log.d("PostFragment", "Failed to delete all posts: "+e.getMessage());
             }
 
             @Override
             public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
                 if (response.isSuccessful()) {
+                    assert response.body() != null;
                     String responseBody = response.body().string();
                     if (responseBody.equals("No posts to delete")) {
-                        ((Activity) context).runOnUiThread(() -> callback.onFailure("No posts to delete"));
+                        runOnUiThread(() -> callback.onFailure("No posts to delete"));
                     } else if (responseBody.equals("All posts deleted successfully")) {
-                        ((Activity) context).runOnUiThread(() -> callback.onSuccess(null));
+                        runOnUiThread(() -> callback.onSuccess(null));
                     }
                 } else {
-                    ((Activity) context).runOnUiThread(() -> callback.onFailure("Failed to delete all posts: " + response.message()));
+                    runOnUiThread(() -> callback.onFailure("Failed to delete all posts: " + response.message()));
+                    Log.d("PostFragment", "Failed to delete all posts: "+response);
+                }
+            }
+        });
+    }
+
+    public void getComments(int postId, NetworkCallback<List<Comment>> callback) {
+        if (!tokenManager.isTokenValid()) {
+            handleInvalidToken();
+            return;
+        }
+
+        Request request = new Request.Builder()
+                .url(AppConstant.BASE_URL + "/api/comments/post/" + postId)
+                .get()
+                .addHeader("Authorization", "Bearer " + tokenManager.getToken())
+                .build();
+
+        client.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(@NonNull Call call, @NonNull IOException e) {
+                Log.e("NetworkService", "Failed to load comments", e);
+                runOnUiThread(() -> callback.onFailure("Failed to load comments. Please check your connection."));
+            }
+
+            @Override
+            public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
+                if (response.isSuccessful() && response.body() != null) {
+                    String jsonResponse = response.body().string();
+                    Gson gson = new Gson();
+                    JsonObject jsonObject = gson.fromJson(jsonResponse, JsonObject.class);
+                    JsonArray jsonArray = jsonObject.getAsJsonArray("content");
+
+                    if (jsonArray == null || jsonArray.size() == 0) {
+                        runOnUiThread(() -> callback.onSuccess(new ArrayList<>(), "No comments found."));
+                        return;
+                    }
+
+                    Type commentListType = new TypeToken<List<Comment>>() {}.getType();
+                    List<Comment> comments = gson.fromJson(jsonArray, commentListType);
+                    runOnUiThread(() -> callback.onSuccess(comments, "Comments loaded successfully"));
+                    Log.d("NetworkService", "Comments: " + comments);
+                } else {
+                    runOnUiThread(() -> callback.onFailure("Failed to load comments: " + response.message()));
                 }
             }
         });

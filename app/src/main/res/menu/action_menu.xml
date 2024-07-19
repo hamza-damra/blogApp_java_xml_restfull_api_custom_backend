@@ -9,6 +9,13 @@
         app:showAsAction="always" />
 
     <item
+        android:id="@id/action_info"
+        android:title="@string/action_info"
+        android:icon="@drawable/info_icon"
+        app:showAsAction="always" />
+
+
+    <item
         android:id="@+id/action_logout"
         android:title="@string/action_logout"
         android:icon="@drawable/ic_logout"

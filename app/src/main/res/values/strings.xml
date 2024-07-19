@@ -19,4 +19,9 @@
     <string name="enter_image_url">Enter Image URL</string>
     <string name="add_another_image">Add Another Image</string>
     <string name="action_logout">logout</string>
+    <string name="action_info">show user info</string>
+    <string name="issued_at">Issued At:</string>
+    <string name="expired_at">Expired At:</string>
+    <string name="test_name">test name</string>
+    <string name="test_content">test content</string>
 </resources>

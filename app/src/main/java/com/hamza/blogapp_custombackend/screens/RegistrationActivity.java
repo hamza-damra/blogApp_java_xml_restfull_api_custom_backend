@@ -1,24 +1,21 @@
 package com.hamza.blogapp_custombackend.screens;
 
-import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
-import android.view.ViewGroup;
 import android.widget.AdapterView;
-import android.widget.ArrayAdapter;
+import android.widget.ProgressBar;
 import android.widget.Spinner;
-import android.widget.TextView;
 import android.widget.Toast;
 
-import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.gson.Gson;
 import com.hamza.blogapp_custombackend.R;
+import com.hamza.blogapp_custombackend.controllers.HintAdapter;
 import com.hamza.blogapp_custombackend.models.Role;
 import com.hamza.blogapp_custombackend.models.User;
 import com.hamza.blogapp_custombackend.network.NetworkManager;
@@ -44,6 +41,7 @@ public class RegistrationActivity extends AppCompatActivity {
     private String selectedRole, selectedSecondRole;
     private NetworkManager networkManager;
     private TokenManager tokenManager;
+    private ProgressBar progressBar;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -57,7 +55,7 @@ public class RegistrationActivity extends AppCompatActivity {
 
         networkManager.loadRoles(AppConstant.BASE_URL + "/api/roles/all", new NetworkManager.NetworkCallback<List<String>>() {
             @Override
-            public void onSuccess(List<String> rolesList) {
+            public void onSuccess(List<String> rolesList, String... message) {
                 role.clear();
                 role.add("Select a role");
                 role.addAll(rolesList);
@@ -95,17 +93,17 @@ public class RegistrationActivity extends AppCompatActivity {
 
         if (Validation.validateNotEmpty(username) && Validation.validateNotEmpty(password) && Validation.validateNotEmpty(name) && !selectedRole.isEmpty()) {
 
-            if(!Validation.validateLength(username, 3, 30)){
+            if (!Validation.validateLength(username, 3, 30)) {
                 Toast.makeText(this, "Username must be between 3 and 30 characters", Toast.LENGTH_SHORT).show();
                 return;
             }
 
-            if(!Validation.validateLength(password, 8, 30)){
+            if (!Validation.validateLength(password, 8, 30)) {
                 Toast.makeText(this, "Password must be between 8 and 30 characters", Toast.LENGTH_SHORT).show();
                 return;
             }
 
-            if(!Validation.validateLength(name, 3, 20)){
+            if (!Validation.validateLength(name, 3, 20)) {
                 Toast.makeText(this, "Name must be between 3 and 20 characters", Toast.LENGTH_SHORT).show();
                 return;
             }
@@ -117,10 +115,12 @@ public class RegistrationActivity extends AppCompatActivity {
                 user = new User(username, password, name, List.of(Role.builder().name(selectedRole).build(), Role.builder().name(selectedSecondRole).build()));
             }
 
+            progressBar.setVisibility(View.VISIBLE);
             networkManager.registerUser(user, new NetworkManager.NetworkCallback<String>() {
                 @Override
-                public void onSuccess(String token) {
+                public void onSuccess(String token, String... message) {
                     tokenManager.saveToken(token);
+                    progressBar.setVisibility(View.GONE);
                     Intent intent = new Intent(RegistrationActivity.this, MainActivity.class);
                     startActivity(intent);
                     finish();
@@ -128,8 +128,9 @@ public class RegistrationActivity extends AppCompatActivity {
 
                 @Override
                 public void onFailure(String error) {
+                    progressBar.setVisibility(View.GONE);
                     if (error.contains("400")) {
-                        Toast.makeText(RegistrationActivity.this, "Username already exists", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(RegistrationActivity.this, "Registration Failed: Bad Request", Toast.LENGTH_SHORT).show();
                     } else {
                         Toast.makeText(RegistrationActivity.this, error, Toast.LENGTH_SHORT).show();
                         Log.e("RegistrationActivity", error);
@@ -149,6 +150,7 @@ public class RegistrationActivity extends AppCompatActivity {
         cancelButton = findViewById(R.id.btn_cancel);
         roleSpinner = findViewById(R.id.role_spinner);
         secondRoleSpinner = findViewById(R.id.second_role_spinner);
+        progressBar = findViewById(R.id.progress_bar);
 
         role.add("Select a role");
         secondRole.add("Select a second role (optional)");
@@ -194,24 +196,6 @@ public class RegistrationActivity extends AppCompatActivity {
                 cardView.animate().translationY(-200).setDuration(300).start();
             } else {
                 cardView.animate().translationY(0).setDuration(300).start();
-            }
-        }
-    }
-
-    public static class HintAdapter extends ArrayAdapter<String> {
-        public HintAdapter(@NonNull Context context, int resource, @NonNull List<String> roles) {
-            super(context, resource, roles);
-        }
-
-        @Override
-        public View getDropDownView(int position, View convertView, @NonNull ViewGroup parent) {
-            if (position == 0) {
-                TextView tv = new TextView(getContext());
-                tv.setHeight(0);
-                tv.setVisibility(View.GONE);
-                return tv;
-            } else {
-                return super.getDropDownView(position, null, parent);
             }
         }
     }
